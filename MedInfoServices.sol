@@ -333,6 +333,7 @@ contract MedInfoServices{
         }
             
     }
+    //==============For patient===================
     function patientApproveOrgsPermission(address _orgId,uint256 _permission,uint expired_utc_time) public{
         if(isPatAvailable(msg.sender)){
             insertOrgsPatientShareTo(msg.sender,_orgId,_permission,expired_utc_time);
@@ -340,4 +341,8 @@ contract MedInfoServices{
             alarmInfo(msg.sender,ERR,"patient not available");
         }
     }
+    function patientGetDesc() public view returns(string v){
+        return patientsDTB.patientMembers[msg.sender].description;
+    }
+    
 }
