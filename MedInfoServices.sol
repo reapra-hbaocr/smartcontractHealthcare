@@ -336,7 +336,6 @@ contract MedInfoServices{
     function patientApproveOrgsPermission(address _orgId,uint256 _permission,uint expired_utc_time) public{
         if(isPatAvailable(msg.sender)){
             insertOrgsPatientShareTo(msg.sender,_orgId,_permission,expired_utc_time);
-            alarmInfo(msg.sender,OK,"");
         }else{
             alarmInfo(msg.sender,ERR,"patient not available");
         }
