@@ -311,7 +311,24 @@ contract MedInfoServices{
         }
     }
     //only service provider can use this function to approve the request
-    function serviceCheckPermissionOfOrgsWithPatient(address _ordID,address _patID) public returns(bool isaccepted){
+    function checkPermissionOfOrgsWithPatient(address _ordID,address _patID) public returns(bool isaccepted){
+       
+            uint256 per=getOrgsPatientsSharePermission(_ordID,_patID);
+            uint256 utc_expired =getOrgsPatientsShareExpiredTime(_ordID,_patID);
+            if(utc_expired > block.timestamp){
+                alarmInfo(msg.sender,ERR,"permission_expired");
+                return false;
+            }
+            
+            if((per== permission_APPROVED_RO)||(per== permission_APPROVED_RW)){
+                 alarmInfo(msg.sender,OK,"acepted permission");
+                 return true;
+            }else{
+                alarmInfo(msg.sender,ERR,"permission_REJECTED");
+                return false;
+            }
+    }
+    function serviceProviderCheckPermissionOfOrgsWithPatient(address _ordID,address _patID) public returns(bool isaccepted){
         if(msg.sender==owner){
             uint256 per=getOrgsPatientsSharePermission(_ordID,_patID);
             uint256 utc_expired =getOrgsPatientsShareExpiredTime(_ordID,_patID);
@@ -333,6 +350,7 @@ contract MedInfoServices{
         }
             
     }
+   
     //==============For patient===================
     function patientApproveOrgsPermission(address _orgId,uint256 _permission,uint expired_utc_time) public{
         if(isPatAvailable(msg.sender)){
