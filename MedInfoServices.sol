@@ -129,8 +129,8 @@ contract MedInfoServices{
         }
         insertOrg(msg.sender,_orgName);
     }
-    function getOrgName() public view returns(string n){
-        return orgsDTB.orgMembers[msg.sender].name;
+    function getOrgName(address _orgID) public view returns(string n){
+        return orgsDTB.orgMembers[_orgID].name;
     }
     function getAllOrgs() public view returns(address[] oIds){
         return orgsDTB.orgMembersList;
