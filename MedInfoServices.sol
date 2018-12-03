@@ -39,7 +39,7 @@ contract MedInfoServices{
         require(msg.sender==owner);
         msg.sender.transfer(howmuch);
     }
-    function setFees(uint256 howmuch) public {
+    function setFee(uint256 howmuch) public {
         require(msg.sender==owner);
         fee=howmuch;
     }
