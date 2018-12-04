@@ -21,6 +21,13 @@ contract MedInfoServices{
        uint256 errcode,
        string info
     );
+    event logReturnAddr(
+       address indexed _fromsender,
+       address indexed _target,
+       address[]  addraddr,
+       uint256 errcode,
+       string info
+    );
     //---------------For service FHIR provider------------------
     // service provider
     function MedInfoServices(string _name,uint256 _fee) public {
@@ -128,6 +135,8 @@ contract MedInfoServices{
             return;
         }
         insertOrg(msg.sender,_orgName);
+        alarmInfo(msg.sender,OK,"updated ORG");
+
     }
     function getOrgName(address _orgID) public view returns(string n){
         return orgsDTB.orgMembers[_orgID].name;
@@ -156,11 +165,11 @@ contract MedInfoServices{
             alarmInfo(msg.sender,OK,"created new patient OK");
         }
     }
-    function getAllPatients() public returns(address[] pids){
+    function getAllPatients() public view  returns(address[] pids){
         if(msg.sender==owner){
             return patientsDTB.patientMembersList;
         }else{
-            alarmInfo(msg.sender,ERR,"only owner can list all patients");
+            return;
         }
     }
     function updatePatientsRegisterInfo(string _description) public payable{
