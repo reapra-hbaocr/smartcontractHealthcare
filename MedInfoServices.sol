@@ -33,7 +33,14 @@ contract MedInfoServices{
     event logReturnAddr(
        address indexed _fromsender,
        address indexed _target,
-       address[]  addraddr,
+       address[]  addrs,
+       uint256 errcode,
+       string info
+    );
+    event logReturnDocID(
+       address indexed _fromsender,
+       address indexed _target,
+       uint256[]  _dids,
        uint256 errcode,
        string info
     );
@@ -303,18 +310,19 @@ contract MedInfoServices{
         insertPatientDoc(_patID,_did,msg.sender,permission_KEEP,_description);//keep the previous permission
         alarmInfo(msg.sender,OK,"created new doc for patient",_patID);
     }
-    function orgGetPatientsDocument(address _patID) public returns (uint256[] _did){
+    
+    function orgGetPatientsDocument(address _patID) public view returns (uint256[] _did){
         uint256 per=getOrgsPatientsSharePermission(msg.sender,_patID);
         uint256 utc_expired =getOrgsPatientsShareExpiredTime(msg.sender,_patID);
         if(utc_expired > block.timestamp){
-            alarmInfo(msg.sender,ERR,"permission_expired",_patID);
+            //alarmInfo(msg.sender,ERR,"permission_expired",_patID);
             return ;
         }
         if((per== permission_APPROVED_RO)||(per== permission_APPROVED_RW)){
-             alarmInfo(msg.sender,OK,"acepted permission",_patID);
+             //alarmInfo(msg.sender,OK,"acepted permission",_patID);
              return getPatientDocs(_patID);
         }else{
-            alarmInfo(msg.sender,ERR,"permission_REJECTED",_patID);
+            //alarmInfo(msg.sender,ERR,"permission_REJECTED",_patID);
             return ;
         }
     }
