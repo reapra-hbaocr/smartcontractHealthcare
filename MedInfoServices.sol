@@ -3,7 +3,10 @@ pragma solidity ^0.4.18;
 contract MedInfoServices{
     string  private owner_name;
     address private owner=0;
-    uint256 private fee=0;
+    uint256 private fee=0; // this is update fee
+    uint256 private get_fee_rate=1; //this is get fee = fee/get_fee_rate
+    uint256 private get_fee=0; //this is get fee = fee/get_fee_rate
+
 
     // for patient info permission_CREATED_BY_ORG 
     uint256 constant permission_CREATED_BY_ORG  = 0; //read and write at beginning by orgs
@@ -11,6 +14,11 @@ contract MedInfoServices{
     uint256 constant permission_APPROVED_RO     = 2; // Patient Approve to read only
     uint256 constant permission_REJECTED        = 3; // Patient not allow to access 
     uint256 constant permission_KEEP            = 4; // Patient not allow to access 
+    
+    uint256 constant status_OK =      3;
+    uint256 constant status_EXPIRED = 2;
+    uint256 constant status_REJECT  = 1;
+    
     
     // for alarm to log the info
     uint256 constant OK=0;
@@ -35,6 +43,7 @@ contract MedInfoServices{
         owner = msg.sender;
         owner_name=_name;
         fee=_fee;//80000000000000
+        get_fee=fee/get_fee_rate;
     }
     //change the owner of the service provider
     function changeOwnerService(address _to,string _name) public {
@@ -120,23 +129,23 @@ contract MedInfoServices{
         if(isOrgAvailable(_orgID)){
             //update new data
             orgsDTB.orgMembers[_orgID].name =_name;
-            alarmInfo(msg.sender,OK,"updated OK");
+            alarmInfo(msg.sender,OK,"updated OK",owner);
         }else{ 
             //create new records
             orgsDTB.orgMembers[_orgID].name =_name;
             orgsDTB.orgMembers[_orgID].orgID =_orgID;
             orgsDTB.orgMembers[_orgID].idx=orgsDTB.orgMembersList.push(_orgID)-1;
-            alarmInfo(msg.sender,OK,"created OK");
+            alarmInfo(msg.sender,OK,"created OK",owner);
         }    
    }
     //===============For Org DTB==================================
     function updateOrgRegisterInfo(string _orgName) public payable{
         if(msg.value < fee){
-            alarmInfo(msg.sender,ERR,"not enough fee");
+            alarmInfo(msg.sender,ERR,"not enough fee",owner);
             return;
         }
         insertOrg(msg.sender,_orgName);
-        alarmInfo(msg.sender,OK,"updated ORG");
+        alarmInfo(msg.sender,OK,"updated ORG",owner);
 
     }
     function getOrgName(address _orgID) public view returns(string n){
@@ -160,11 +169,11 @@ contract MedInfoServices{
         if(isPatAvailable(_patId)){
              //update new data
             patientsDTB.patientMembers[_patId].description=_description;
-            alarmInfo(msg.sender,OK,"available PatinetID"); 
+            //alarmInfo(msg.sender,OK,"available PatinetID",owner); 
         }else{
             patientsDTB.patientMembers[_patId].description=_description;
             patientsDTB.patientMembers[_patId].idx=patientsDTB.patientMembersList.push(_patId)-1;
-            alarmInfo(msg.sender,OK,"created new patient OK");
+            //alarmInfo(msg.sender,OK,"created new patient OK",owner);
         }
     }
     function getAllPatients() public view  returns(address[] pids){
@@ -176,10 +185,12 @@ contract MedInfoServices{
     }
     function updatePatientsRegisterInfo(string _description) public payable{
         if(msg.value < fee){
-            alarmInfo(msg.sender,ERR,"not enough fee to update new patient");
+            alarmInfo(msg.sender,ERR,"not enough fee to update new patient",owner);
             return;
         }
         insertPatient(msg.sender,_description);
+        alarmInfo(msg.sender,OK,"updatePatientsRegisterInfo OK",owner);
+
     }
     //================For Document========================
     function isPatientDocAvailable(address _patId, uint256 _did) public view returns(bool isOK){
@@ -201,7 +212,7 @@ contract MedInfoServices{
             }
             patientsDTB.patientMembers[_patId].docs.mapInfos[_did].description=_description;
             patientsDTB.patientMembers[_patId].docs.mapInfos[_did].last_utc=block.timestamp;
-            alarmInfo(msg.sender,OK,"updated Documents");
+            alarmInfo(msg.sender,OK,"updated Documents",_patId);
         }else{ /*not exist --> create the new one*/
             patientsDTB.patientMembers[_patId].docs.mapInfos[_did].lastUpdatedbyOrg=_orgId;
             if(_permission==permission_KEEP){ // kepp the old one
@@ -216,7 +227,7 @@ contract MedInfoServices{
 
             //Insert org to patients
             insertOrgsPatientShareTo(_patId,_orgId,permission_KEEP,0);
-            alarmInfo(msg.sender,OK,"created new Documents");
+            alarmInfo(msg.sender,OK,"created new Documents",_patId);
         }
     }
     function getPatientsDocCnt(address _patId) private view returns(uint256 v){
@@ -248,7 +259,7 @@ contract MedInfoServices{
             if(_permission!=permission_KEEP){
                 patientsDTB.patientMembers[_patId].orgs.mapInfos[_orgId].permission=_permission;
             }
-            alarmInfo(msg.sender,OK,"updated Patient share to orgs permission");
+            //alarmInfo(msg.sender,OK,"updated Patient share to orgs permission");
         }else{
            if(utc_expired>0){
                 patientsDTB.patientMembers[_patId].orgs.mapInfos[_orgId].expired_utc_time=utc_expired;
@@ -257,7 +268,7 @@ contract MedInfoServices{
                 patientsDTB.patientMembers[_patId].orgs.mapInfos[_orgId].permission=_permission;
             }
             patientsDTB.patientMembers[_patId].orgs.mapInfos[_orgId].idx=patientsDTB.patientMembers[_patId].orgs.listIdxs.push(_orgId)-1; 
-            alarmInfo(msg.sender,OK,"updated Patient share to orgs permission");
+            //alarmInfo(msg.sender,OK,"updated Patient share to orgs permission");
         }
     }
     function getOrgsPatientsShareToCnt(address _patId) private view returns(uint256 v){
@@ -276,100 +287,76 @@ contract MedInfoServices{
     //org always have permission to update their records as created by orgs --> the system will track the time when they update excepting when the patient forbid that
     function orgUpdatePatientDocument(address _patID,uint256 _did,string _description) payable public{
         if(msg.value < fee){
-            alarmInfo(msg.sender,ERR,"not enough fee to update new PatientDocuments");
+            alarmInfo(msg.sender,ERR,"not enough fee to update new PatientDocuments",_patID);
             return;
         }
         if(!isPatAvailable(_patID)){
-            alarmInfo(msg.sender,ERR,"patient is not registered yet");
+            alarmInfo(msg.sender,ERR,"patient is not registered yet",_patID);
             return;
         }
         uint256 per =getPermissionOrgOfDoc(_patID,_did);
         if((per==permission_REJECTED)&&(per==permission_APPROVED_RO)){
-            alarmInfo(msg.sender,ERR,"patient does not allow org to update this doc");
+            alarmInfo(msg.sender,ERR,"patient does not allow org to update this doc",_patID);
             return;
         }
         
         insertPatientDoc(_patID,_did,msg.sender,permission_KEEP,_description);//keep the previous permission
-        alarmInfo(msg.sender,OK,"created new doc for patient");
+        alarmInfo(msg.sender,OK,"created new doc for patient",_patID);
     }
     function orgGetPatientsDocument(address _patID) public returns (uint256[] _did){
         uint256 per=getOrgsPatientsSharePermission(msg.sender,_patID);
         uint256 utc_expired =getOrgsPatientsShareExpiredTime(msg.sender,_patID);
         if(utc_expired > block.timestamp){
-            alarmInfo(msg.sender,ERR,"permission_expired");
+            alarmInfo(msg.sender,ERR,"permission_expired",_patID);
             return ;
         }
         if((per== permission_APPROVED_RO)||(per== permission_APPROVED_RW)){
-             alarmInfo(msg.sender,OK,"acepted permission");
+             alarmInfo(msg.sender,OK,"acepted permission",_patID);
              return getPatientDocs(_patID);
         }else{
-            alarmInfo(msg.sender,ERR,"permission_REJECTED");
+            alarmInfo(msg.sender,ERR,"permission_REJECTED",_patID);
             return ;
         }
     }
-    function orgGetPatientsDocumentIsReadable(address _patID) public returns (bool isaccepted){
+    function orgGetPatientsDocumentIsReadable(address _patID) public view returns (uint256 status){
         uint256 per=getOrgsPatientsSharePermission(msg.sender,_patID);
         uint256 utc_expired =getOrgsPatientsShareExpiredTime(msg.sender,_patID);
-        if(utc_expired > block.timestamp){
-            alarmInfo(msg.sender,ERR,"permission_expired");
-            return false;
+        if((utc_expired < block.timestamp)&&(utc_expired>0)){
+      //      alarmInfo(msg.sender,ERR,"permission_expired");
+            return status_EXPIRED;
         }
         if((per== permission_APPROVED_RO)||(per== permission_APPROVED_RW)){
-             alarmInfo(msg.sender,OK,"acepted permission");
-             return true;
+       //      alarmInfo(msg.sender,OK,"acepted permission");
+            return status_OK; //OK
         }else{
-            alarmInfo(msg.sender,ERR,"permission_REJECTED");
-            return false;
+        //    alarmInfo(msg.sender,ERR,"permission_REJECTED");
+            return status_REJECT;
         }
     }
-    //only service provider can use this function to approve the request
-    function checkPermissionOfOrgsWithPatient(address _ordID,address _patID) public returns(bool isaccepted){
+    function checkPermissionOfOrgsWithPatient(address _ordID,address _patID) public view returns(uint256 status){
        
             uint256 per=getOrgsPatientsSharePermission(_ordID,_patID);
             uint256 utc_expired =getOrgsPatientsShareExpiredTime(_ordID,_patID);
     
             if((utc_expired < block.timestamp)&&(utc_expired>0)){
-                alarmInfo(msg.sender,ERR,"permission_expired");
-                return false;
+                //alarmInfo(msg.sender,ERR,"permission_expired");
+                return status_EXPIRED;
             }
             
             if((per== permission_APPROVED_RO)||(per== permission_APPROVED_RW)){
-                 alarmInfo(msg.sender,OK,"acepted permission");
-                 return true;
+                 //alarmInfo(msg.sender,OK,"acepted permission");
+                 return status_OK;
             }else{
-                alarmInfo(msg.sender,ERR,"permission_REJECTED");
-                return false;
+                //alarmInfo(msg.sender,ERR,"permission_REJECTED");
+                return status_REJECT;
             }
     }
-    function serviceProviderCheckPermissionOfOrgsWithPatient(address _ordID,address _patID) public returns(bool isaccepted){
-        if(msg.sender==owner){
-            uint256 per=getOrgsPatientsSharePermission(_ordID,_patID);
-            uint256 utc_expired =getOrgsPatientsShareExpiredTime(_ordID,_patID);
-            if(utc_expired > block.timestamp){
-                alarmInfo(msg.sender,ERR,"permission_expired");
-                return false;
-            }
-            
-            if((per== permission_APPROVED_RO)||(per== permission_APPROVED_RW)){
-                 alarmInfo(msg.sender,OK,"acepted permission");
-                 return true;
-            }else{
-                alarmInfo(msg.sender,ERR,"permission_REJECTED");
-                return false;
-            }
-        }else{
-            alarmInfo(msg.sender,ERR,"only service provoder can use this function");
-            return false;
-        }
-            
-    }
-   
     //==============For patient===================
     function patientApproveOrgsPermission(address _orgId,uint256 _permission,uint expired_utc_time) public{
         if(isPatAvailable(msg.sender)){
             insertOrgsPatientShareTo(msg.sender,_orgId,_permission,expired_utc_time);
         }else{
-            alarmInfo(msg.sender,ERR,"patient not available");
+            alarmInfo(msg.sender,ERR,"patient not available",_orgId);
         }
     }
     function patientGetDesc() public view returns(string v){
