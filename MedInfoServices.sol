@@ -19,7 +19,8 @@ contract MedInfoServices{
     event alarmInfo(
        address indexed _fromsender,
        uint256 errcode,
-       string info
+       string info,
+       address indexed _to
     );
     event logReturnAddr(
        address indexed _fromsender,
@@ -153,6 +154,7 @@ contract MedInfoServices{
            return false;
         }
         return (patientsDTB.patientMembersList[patientsDTB.patientMembers[_patId].idx] == _patId);
+    //    return  patientsDTB.patientMembers[msg.sender].description;
     }
     function insertPatient(address _patId,string _description) private{
         if(isPatAvailable(_patId)){
@@ -211,10 +213,11 @@ contract MedInfoServices{
             patientsDTB.patientMembers[_patId].docs.mapInfos[_did].description=_description;
             patientsDTB.patientMembers[_patId].docs.mapInfos[_did].last_utc=block.timestamp; 
             patientsDTB.patientMembers[_patId].docs.mapInfos[_did].idx=patientsDTB.patientMembers[_patId].docs.listIdxs.push(_did)-1; 
+
+            //Insert org to patients
+            insertOrgsPatientShareTo(_patId,_orgId,permission_KEEP,0);
             alarmInfo(msg.sender,OK,"created new Documents");
         }
-            
-        
     }
     function getPatientsDocCnt(address _patId) private view returns(uint256 v){
         return patientsDTB.patientMembers[_patId].docs.listIdxs.length;
@@ -324,7 +327,8 @@ contract MedInfoServices{
        
             uint256 per=getOrgsPatientsSharePermission(_ordID,_patID);
             uint256 utc_expired =getOrgsPatientsShareExpiredTime(_ordID,_patID);
-            if(utc_expired > block.timestamp){
+    
+            if((utc_expired < block.timestamp)&&(utc_expired>0)){
                 alarmInfo(msg.sender,ERR,"permission_expired");
                 return false;
             }
