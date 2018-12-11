@@ -152,7 +152,7 @@ contract MedInfoServices{
             return;
         }
         insertOrg(msg.sender,_orgName);
-        alarmInfo(msg.sender,OK,"updated ORG",owner);
+        //alarmInfo(msg.sender,OK,"updated ORG",owner);
 
     }
     function getOrgName(address _orgID) public view returns(string n){
